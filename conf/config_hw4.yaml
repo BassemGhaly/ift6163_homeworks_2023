@@ -28,7 +28,7 @@ alg:
     critic_learning_rate: 1e-3
     n_layers: 2
     size: 64
-    learning_rate: 1e-3
+    learning_rate: 3e-4
     ob_dim: 0             # do not modify
     ac_dim: 0             # do not modify
     batch_size_initial: 0 # do not modify
