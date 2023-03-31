@@ -41,14 +41,18 @@ class Reacher7DOFEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         # finalize step
         env_info = {'ob': ob,
                     'rewards': self.reward_dict,
-                    'score': score}
+                    'score': score,
+                    "success": self.get_target_dist(ob) < 0.2}
 
         return ob, reward, done, env_info
 
-    def get_score(self, obs):
+    def get_target_dist(self, obs):
         hand_pos = obs[-6:-3]
         target_pos = obs[-3:]
-        score = -1*np.abs(hand_pos-target_pos)
+        return np.abs(hand_pos-target_pos)
+        
+    def get_score(self, obs):
+        score = -1*self.get_target_dist(obs)
         return score
 
     def get_reward(self, observations, actions):

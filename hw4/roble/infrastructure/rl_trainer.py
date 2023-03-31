@@ -215,6 +215,7 @@ class RL_Trainer(RL_Trainer):
             train_returns = [path["reward"].sum() for path in paths]
             eval_returns = [eval_path["reward"].sum() for eval_path in eval_paths]
             eval_avg_rew = [eval_path["reward"].mean() for eval_path in eval_paths]
+            eval_avg_success = [eval_path["info"]["success"].mean() for eval_path in eval_paths]
 
             # episode lengths, for logging
             train_ep_lens = [len(path["reward"]) for path in paths]
@@ -223,6 +224,7 @@ class RL_Trainer(RL_Trainer):
             # decide what to log
             logs = OrderedDict()
             logs["Eval_AverageReward"] = np.mean(eval_avg_rew)
+            logs["Eval_AverageSuccess"] = np.mean(eval_avg_success)
             logs["Eval_AverageReturn"] = np.mean(eval_returns)
             logs["Eval_StdReturn"] = np.std(eval_returns)
             logs["Eval_MaxReturn"] = np.max(eval_returns)

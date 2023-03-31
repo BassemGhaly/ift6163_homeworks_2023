@@ -4,14 +4,14 @@ import sys
 print(sys.path)
 import hydra, json
 
-from hw4.roble.agents.dqn_agent import DQNAgent
-from hw4.roble.agents.ddpg_agent import DDPGAgent
-from hw4.roble.agents.td3_agent import TD3Agent
-from hw4.roble.agents.sac_agent import SACAgent
+from hw3.roble.agents.dqn_agent import DQNAgent
+from hw3.roble.agents.ddpg_agent import DDPGAgent
+from hw3.roble.agents.td3_agent import TD3Agent
+from hw3.roble.agents.sac_agent import SACAgent
 from hw4.roble.agents.pg_agent import PGAgent
 from hw4.roble.infrastructure.rl_trainer import RL_Trainer
 from omegaconf import DictConfig, OmegaConf
-from hw4.roble.infrastructure.dqn_utils import get_env_kwargs
+from hw3.roble.infrastructure.dqn_utils import get_env_kwargs
 
 class offpolicy_Trainer(object):
 

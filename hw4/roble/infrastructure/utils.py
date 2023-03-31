@@ -26,7 +26,7 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
         ac = policy.get_action(ob)
         ac = ac[0]
         acs.append(ac)
-        ob, rew, done, _ = env.step(ac)
+        ob, rew, done, info = env.step(ac)
         # add the observation after taking a step to next_obs
         next_obs.append(ob)
         rewards.append(rew)
@@ -38,7 +38,7 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
             break
         else:
             terminals.append(0)
-    return Path(obs, image_obs, acs, rewards, next_obs, terminals)
+    return Path(obs, image_obs, acs, rewards, next_obs, terminals, info)
 
 def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array')):
     """
@@ -76,7 +76,7 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, ren
 ############################################
 ############################################
 
-def Path(obs, image_obs, acs, rewards, next_obs, terminals):
+def Path(obs, image_obs, acs, rewards, next_obs, terminals, info):
     """
         Take info (separate arrays) from a single rollout
         and return it in a single dictionary
@@ -88,7 +88,8 @@ def Path(obs, image_obs, acs, rewards, next_obs, terminals):
             "reward" : np.array(rewards, dtype=np.float32),
             "action" : np.array(acs, dtype=np.float32),
             "next_observation": np.array(next_obs, dtype=np.float32),
-            "terminal": np.array(terminals, dtype=np.float32)}
+            "terminal": np.array(terminals, dtype=np.float32),
+            "info": info}
 
 
 def convert_listofrollouts(paths, concat_rew=True):
