@@ -8,6 +8,8 @@ from gym import wrappers
 import numpy as np
 import torch
 
+from hw2.roble.infrastructure.rl_trainer import RL_Trainer
+
 from hw4.roble.infrastructure import pytorch_util as ptu
 from hw4.roble.infrastructure import utils
 from hw4.roble.infrastructure.logger import Logger
@@ -28,13 +30,16 @@ from hw4.roble.infrastructure.hrl_wrapper import HRLWrapper
 MAX_NVIDEO = 1
 MAX_VIDEO_LEN = 40 # we overwrite this in the code below
 
-class RL_Trainer(object):
+class RL_Trainer(RL_Trainer):
 
     def __init__(self, params, agent_class = None):
 
         #############
         ## INIT
         #############
+        # Inherit from hw1 RL_Trainer
+        super().__init__(params, agent_class)
+        
 
         # Get params, create logger
         self.params = params
@@ -44,36 +49,7 @@ class RL_Trainer(object):
         seed = self.params['logging']['random_seed']
         np.random.seed(seed)
         torch.manual_seed(seed)
-        ptu.init_gpu(
-            use_gpu=not self.params['alg']['no_gpu'],
-            gpu_id=self.params['alg']['which_gpu']
-        )
 
-        #############
-        ## ENV
-        #############
-        # Make the gym environment
-        if self.params['env']['env_name'] == 'antmaze':
-            self.env = create_maze_env('AntMaze')
-        elif self.params['env']['env_name'] == 'reacher':
-            self.env = create_reacher_env()
-     
-        
-    
-            
-            
-        # Call your goal conditionned wrapper here (You can modify arguments depending on your implementation)
-        if self.params['env']['task_name'] == 'gcrl':
-            self.env = GoalConditionedEnv(self.env)     
-        elif self.params['env']['task_name'] == 'gcrl_v2':
-            self.env = GoalConditionedEnvV2(self.env)
-        elif self.params['env']['task_name'] == 'hrl':
-            self.env = HRLWrapper(self.env)
-
-
-
-            
-            
         if 'env_wrappers' in self.params:
             # These operations are currently only for Atari envs
             self.env = wrappers.Monitor(
@@ -97,47 +73,10 @@ class RL_Trainer(object):
 
         self.env.seed(seed)
 
-        # import plotting (locally if 'obstacles' env)
-        if not(self.params['env']['env_name']=='obstacles-roble-v0'):
-            import matplotlib
-            matplotlib.use('Agg')
-
-        # Maximum length for episodes
-        self.params['env']['max_episode_length'] = self.params['env']['max_episode_length'] or self.env.spec.max_episode_steps
-        global MAX_VIDEO_LEN
-        MAX_VIDEO_LEN = self.params['env']['max_episode_length']
-
-        # Is this env continuous, or self.discrete?
-        discrete = isinstance(self.env.action_space, gym.spaces.Discrete)
-        # Are the observations images?
-        img = len(self.env.observation_space.shape) > 2
-
-        self.params['alg']['discrete'] = discrete
-
-        # Observation and action sizes
-
-        ob_dim = self.env.observation_space.shape if img else self.env.observation_space.shape[0]
-        ac_dim = self.env.action_space.n if discrete else self.env.action_space.shape[0]
-        self.params['alg']['ac_dim'] = ac_dim
-        self.params['alg']['ob_dim'] = ob_dim
-
-        # simulation timestep, will be used for video saving
-        if 'model' in dir(self.env):
-            self.fps = 1/self.env.model.opt.timestep
-        elif 'env_wrappers' in self.params:
-            self.fps = 30 # This is not actually used when using the Monitor wrapper
-        #elif 'video.frames_per_second' in self.env.env.metadata.keys():
-            #self.fps = self.env.env.metadata['video.frames_per_second']
-        else:
-            self.fps = 10
-
 
         #############
         ## AGENT
         #############
-
-        # agent_class = self.params['agent_class']
-        self.agent = agent_class(self.env, self.params)
 
     def run_training_loop(self, n_iter, collect_policy, eval_policy,
                           initial_expertdata=None, relabel_with_expert=False,
@@ -199,6 +138,8 @@ class RL_Trainer(object):
                 paths = self.do_relabel_with_expert(expert_policy, paths)
 
             # add collected data to replay buffer
+            
+            # print("collected ", len(paths[0]), " trajectories")
             self.agent.add_to_replay_buffer(paths)
 
             # train agent (using sampled data from replay buffer)
@@ -222,27 +163,9 @@ class RL_Trainer(object):
 
                 if self.params['logging']['save_params']:
                     self.agent.save('{}/agent_itr_{}.pt'.format(self.params['logging']['logdir'], itr))
+            if  self.params['alg']['on_policy']:       
+                self.agent.clear_mem()
 
-    ####################################
-    ####################################
-
-    def collect_training_trajectories(self, itr, initial_expertdata, collect_policy, num_transitions_to_sample, save_expert_data_to_disk=False):
-        """
-        :param itr:
-        :param load_initial_expertdata:  path to expert data pkl file
-        :param collect_policy:  the current policy using which we collect data
-        :param num_transitions_to_sample:  the number of transitions we collect
-        :return:
-            paths: a list trajectories
-            envsteps_this_batch: the sum over the numbers of environment steps in paths
-            train_video_paths: paths which also contain videos for visualization purposes
-        """
-        # TODO: get this from hw1 or hw2
-        return paths, envsteps_this_batch, train_video_paths
-
-    def train_agent(self):
-        # TODO: get this from hw1 or hw2
-        return all_logs
 
     ####################################
     ####################################
@@ -283,7 +206,27 @@ class RL_Trainer(object):
 
         self.logger.flush()
         
-    
+    def create_env(self, env_name):
+        # Make the gym environment
+        if self.params['env']['env_name'] == 'antmaze':
+            env = create_maze_env('AntMaze')
+        elif self.params['env']['env_name'] == 'reacher':
+            env = create_reacher_env()
+        else:
+            env = gym.make(env_name)
+            
+                # Call your goal conditioned wrapper here (You can modify arguments depending on your implementation)
+        if self.params['env']['task_name'] == 'gcrl':
+            env = GoalConditionedEnv(env)     
+        elif self.params['env']['task_name'] == 'gcrl_v2':
+            env = GoalConditionedEnvV2(env)
+        elif self.params['env']['task_name'] == 'hrl':
+            env = HRLWrapper(env)
+        else:
+            pass
+        
+        return env
+        
     def perform_ddpg_logging(self, itr,all_logs):        
         logs = OrderedDict()
         logs["Train_EnvstepsSoFar"] = self.agent.t
@@ -352,7 +295,9 @@ class RL_Trainer(object):
         
         # collect eval trajectories, for logging
         print("\nCollecting data for eval...")
-        eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(self.env, eval_policy, self.params['eval_batch_size'], self.params['max_episode_length'])
+        eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(self.env, 
+                                eval_policy, self.params['alg']['eval_batch_size'], 
+                                self.params['env']['max_episode_length'])
 
         # save eval rollouts as videos in tensorboard event file
         if self.log_video:
@@ -375,6 +320,7 @@ class RL_Trainer(object):
             # returns, for logging
             train_returns = [path["reward"].sum() for path in paths]
             eval_returns = [eval_path["reward"].sum() for eval_path in eval_paths]
+            eval_avg_rew = [eval_path["reward"].mean() for eval_path in eval_paths]
 
             # episode lengths, for logging
             train_ep_lens = [len(path["reward"]) for path in paths]
@@ -382,6 +328,7 @@ class RL_Trainer(object):
 
             # decide what to log
             logs = OrderedDict()
+            logs["Eval_AverageReward"] = np.mean(eval_avg_rew)
             logs["Eval_AverageReturn"] = np.mean(eval_returns)
             logs["Eval_StdReturn"] = np.std(eval_returns)
             logs["Eval_MaxReturn"] = np.max(eval_returns)
@@ -396,12 +343,17 @@ class RL_Trainer(object):
 
             logs["Train_EnvstepsSoFar"] = self.total_envsteps
             logs["TimeSinceStart"] = time.time() - self.start_time
+            
+            logs["Critic_Loss"] = np.mean(np.array([all_log["Critic_Loss"].mean() for all_log in all_logs]))
+            
             last_log = all_logs[-1]
             logs.update(last_log)
 
             if itr == 0:
                 self.initial_return = np.mean(train_returns)
             logs["Initial_DataCollection_AverageReturn"] = self.initial_return
+            
+            
 
             # perform the logging
             for key, value in logs.items():

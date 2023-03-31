@@ -7,6 +7,7 @@ import torch, pickle
 
 from hw1.roble.infrastructure import pytorch_util as ptu
 from hw1.roble.infrastructure.logger import Logger
+from hw1.roble.infrastructure.logging import Logger as TableLogger
 from hw1.roble.infrastructure import utils
 
 # how many rollouts to save as videos to tensorboard
@@ -25,6 +26,8 @@ class RL_Trainer(object):
         # Get params, create logger, create TF session
         self.params = params
         self.logger = Logger(self.params['logging']['logdir'])
+        self.logger_table = TableLogger()
+        self.logger_table.add_tabular_output(file_name=self.params['logging']['logdir']+"/log_data.csv")
         self.log_video = False
 
         # Set random seeds
@@ -41,12 +44,11 @@ class RL_Trainer(object):
         #############
 
         # Make the gym environment
-        self.env = gym.make(self.params['env']['env_name'])
+        self.env = self.create_env(self.params['env']['env_name'])
         self.env.seed(seed)
 
         # Maximum length for episodes
         # self.params['env']['max_episode_length'] = self.params['env']['max_episode_length'] or self.env.spec.max_episode_steps
-        global MAX_VIDEO_LEN
         MAX_VIDEO_LEN = self.params['env']['max_episode_length']
 
         # Is this env continuous, or self.discrete?
@@ -68,7 +70,7 @@ class RL_Trainer(object):
             self.fps = self.env.env.metadata['video.frames_per_second']
         else:
             self.fps = 10
-        
+
         #############
         ## AGENT
         #############
@@ -177,7 +179,6 @@ class RL_Trainer(object):
         print("\nCollecting data to be used for training...")
 
         paths, envsteps_this_batch = TODO
-
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
 
@@ -186,14 +187,12 @@ class RL_Trainer(object):
             print('\nCollecting train rollouts to be used for saving videos...')
             ## TODO look in utils and implement sample_n_trajectories
             train_video_paths = utils.sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
-    
         return paths, envsteps_this_batch, train_video_paths
 
     def train_agent(self):
         print('\nTraining agent using sampled data from replay buffer...')
         all_logs = []
         for train_step in range(self.params['alg']['num_agent_train_steps_per_iter']):
-
             # TODO sample some data from the data buffer
             # HINT1: use the agent's sample function
             # HINT2: how much data = self.params['train_batch_size']
@@ -212,7 +211,6 @@ class RL_Trainer(object):
         # TODO relabel collected obsevations (from our policy) with labels from an expert policy
         # HINT: query the policy (using the get_action function) with paths[i]["observation"]
         # and replace paths[i]["action"] with these expert labels
-
         return paths
 
     ####################################
@@ -224,19 +222,18 @@ class RL_Trainer(object):
         print("\nCollecting data for eval...")
         eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(self.env, eval_policy, self.params['alg']['eval_batch_size'], self.params['env']['max_episode_length'])
 
-        # save eval rollouts as videos in tensorboard event file
+        # save eval rollouts as videos in the video folder (for grading)
         if self.log_video:
             if train_video_paths is not None:
                 #save train/eval videos
                 print('\nSaving train rollouts as videos...')
                 self.logger.log_paths_as_videos(train_video_paths, itr, fps=self.fps, max_videos_to_save=MAX_NVIDEO,
                                             video_title='train_rollouts')
-            else:
-                print('\nCollecting video rollouts eval')
-                eval_video_paths = utils.sample_n_trajectories(self.env, eval_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
-                print('\nSaving eval rollouts as videos...')
-                self.logger.log_paths_as_videos(eval_video_paths, itr, fps=self.fps,max_videos_to_save=MAX_NVIDEO,
-                                             video_title='eval_rollouts')
+            print('\nCollecting video rollouts eval')
+            eval_video_paths = utils.sample_n_trajectories(self.env, eval_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
+            print('\nSaving eval rollouts as videos...')
+            self.logger.log_paths_as_videos(eval_video_paths, itr, fps=self.fps,max_videos_to_save=MAX_NVIDEO,
+                                            video_title='eval_rollouts')
 
         # save eval metrics
         if self.log_metrics:
@@ -277,6 +274,7 @@ class RL_Trainer(object):
                 print('{} : {}'.format(key, value))
                 self.logger.log_file(value, key, itr)
                 self.logger.log_scalar(value, key, itr)
+            self.logger_table.record_dict(logs, prefix='trainer/')
             print('Done logging...\n\n')
 
             self.logger.flush()

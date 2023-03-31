@@ -181,6 +181,7 @@ class RL_Trainer(object):
             if itr % print_period == 0:
                 print("\nTraining agent...")
             all_logs = self.train_agent()
+    
 
             # log/save
             if self.logvideo or self.logmetrics:
@@ -188,8 +189,9 @@ class RL_Trainer(object):
                 print('\nBeginning logging procedure...')
                 if isinstance(self.agent, DQNAgent):
                     self.perform_dqn_logging(itr, all_logs)
+                
                 elif isinstance(self.agent, DDPGAgent):
-                    self.perform_ddpg_logging(itr, all_logs)
+                    self.perform_ddpg_logging(itr,all_logs)
                 else:
                     self.perform_logging(itr, paths, eval_policy, train_video_paths, all_logs)
 
@@ -256,10 +258,12 @@ class RL_Trainer(object):
 
         self.logger.flush()
         
+    
     def perform_ddpg_logging(self, itr,all_logs):        
         logs = OrderedDict()
         logs["Train_EnvstepsSoFar"] = self.agent.t
-        n = 5
+        
+        n = 25
         if len(self.agent.rewards) > 0:
             self.mean_episode_reward = np.mean(np.array(self.agent.rewards)[-n:])
             
@@ -289,6 +293,7 @@ class RL_Trainer(object):
         for log in all_logs:
             if len(log) > 0:
                 print_all_logs = True
+                #print(Q_predictions)
                 Q_predictions.append(np.mean(log["Critic"]["Q Predictions"]))
                 Q_targets.append(np.mean((log["Critic"]["Q Targets"])))
                 policy_actions_mean.append(np.mean((log["Critic"]["Policy Actions"])))
@@ -315,6 +320,7 @@ class RL_Trainer(object):
             self.logger.log_scalar(value, key, self.agent.t)
         self.logger.log_file(itr, logs)
         print('Done DDPG logging...\n\n')
+        #logs.update(last_log)
         self.logger.flush()
 
     def perform_logging(self, itr, paths, eval_policy, train_video_paths, all_logs):

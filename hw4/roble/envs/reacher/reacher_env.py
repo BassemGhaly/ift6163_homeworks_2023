@@ -79,7 +79,7 @@ class Reacher7DOFEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
         #calc rew
         dist = np.linalg.norm(hand_pos - target_pos, axis=1)
-        self.reward_dict['r_total'] = -10*dist
+        self.reward_dict['r_total'] = -1*dist
 
         #done is always false for this env
         dones = np.zeros((observations.shape[0],))
@@ -134,10 +134,21 @@ def create_reacher_env():
 if __name__ == '__main__':
     env = create_reacher_env()
     env.reset()
-    env.render()
-    for i in range(1000):
-        env.step(env.action_space.sample())
-        env.render()
+    # env.render()
+    hand_poses = []
+    for e in range(25):
+        for i in range(500):
+            a = env.action_space.sample()
+            print ("action", a)
+            obs, _, _, _ = env.step(a)
+            hand_pos = obs[-6:-3]
+            hand_poses.append(hand_pos)
+            # print ("hand_pos", hand_pos)
+            # env.render()
 
+    print ("Min: ", np.min(hand_poses, axis=0))
+    print ("Max: ", np.max(hand_poses, axis=0))
+    print ("Mean: ", np.mean(hand_poses, axis=0))
+    print ("STD: ", np.std(hand_poses, axis=0))
     env.close()
         

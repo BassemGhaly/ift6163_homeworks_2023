@@ -3,6 +3,7 @@ import numpy as np
 from .base_agent import BaseAgent
 from hw4.roble.policies.MLP_policy import MLPPolicyPG
 from hw4.roble.infrastructure.replay_buffer import ReplayBuffer
+from hw4.roble.infrastructure.utils import normalize
 
 class PGAgent(BaseAgent):
     def __init__(self, env, agent_params):
@@ -11,24 +12,26 @@ class PGAgent(BaseAgent):
         # init vars
         self.env = env
         self.agent_params = agent_params
-        self.gamma = self.agent_params['alg']['discount']
-        self.standardize_advantages = self.agent_params['alg']['standardize_advantages']
-        self.nn_baseline = self.agent_params['alg']['nn_baseline']
-        self.reward_to_go = self.agent_params['alg']['reward_to_go']
-        self.gae_lambda = self.agent_params['alg']['gae_lambda']
+        print ("self.agent_params: ", self.agent_params)
+        self.gamma = self.agent_params['discount']
+        self.standardize_advantages = self.agent_params['standardize_advantages']
+        self.nn_baseline = self.agent_params['nn_baseline']
+        self.reward_to_go = self.agent_params['reward_to_go']
+        self.gae_lambda = self.agent_params['gae_lambda']
 
         if self.gae_lambda == 'None':
             self.gae_lambda = None
 
         # actor/policy
         self.actor = MLPPolicyPG(
-            self.agent_params['alg']['ac_dim'],
-            self.agent_params['alg']['ob_dim'],
-            self.agent_params['alg']['n_layers'],
-            self.agent_params['alg']['size'],
-            discrete=self.agent_params['alg']['discrete'],
-            learning_rate=self.agent_params['alg']['learning_rate'],
-            nn_baseline=self.agent_params['alg']['nn_baseline']
+            self.agent_params['ac_dim'],
+            self.agent_params['ob_dim'],
+            self.agent_params['n_layers'],
+            self.agent_params['size'],
+            discrete=self.agent_params['discrete'],
+            learning_rate=self.agent_params['learning_rate'],
+            nn_baseline=self.agent_params['nn_baseline'],
+            learn_policy_std=self.agent_params['learn_policy_std'],
         )
 
         # replay buffer
@@ -43,28 +46,34 @@ class PGAgent(BaseAgent):
 
         q_values = self.calculate_q_vals(rewards_list)
         advantages = self.estimate_advantage(observations, rewards_list, q_values, terminals)
+        advantages = advantages / np.std(advantages) ## Try to keep the statistics of the advantages standardized
         train_log = self.actor.update(observations, actions, advantages=advantages, q_values=q_values)
 
         return train_log
 
-    def calculate_q_vals(self, rewards_list):
-
+    def calculate_q_vals(self, rews_list):
+        
         """
             Monte Carlo estimation of the Q function.
         """
-
-        q_values = []
-
+        
+        # Case 1: trajectory-based PG
+        # Estimate Q^{pi}(s_t, a_t) by the total discounted reward summed over entire trajectory
         if not self.reward_to_go:
-            for rollout in rewards_list:
-                q_values += list(self._discounted_return(rollout))
-
+        
+            # For each point (s_t, a_t), associate its value as being the discounted sum of rewards over the full trajectory
+            # In other words: value of (s_t, a_t) = sum_{t'=0}^T gamma^t' r_{t'}
+            q_values = np.concatenate([self._discounted_return(r) for r in rews_list])
+        
+        # Case 2: reward-to-go PG
         # Estimate Q^{pi}(s_t, a_t) by the discounted sum of rewards starting from t
         else:
-            for rollout in rewards_list:
-                q_values += list(self._discounted_cumsum(rollout))
-
-        return np.array(q_values)
+        
+            # For each point (s_t, a_t), associate its value as being the discounted sum of rewards over the full trajectory
+            # In other words: value of (s_t, a_t) = sum_{t'=t}^T gamma^(t'-t) * r_{t'}
+            q_values = np.concatenate([self._discounted_cumsum(r) for r in rews_list])
+        
+        return q_values
 
     def estimate_advantage(self, obs, rews_list, q_values, terminals):
 
@@ -89,7 +98,7 @@ class PGAgent(BaseAgent):
             if self.gae_lambda is not None:
                 ## append a dummy T+1 value for simpler recursive calculation
                 values = np.append(values, [0])
-
+                
                 ## combine rews_list into a single array
                 rews = np.concatenate(rews_list)
 
@@ -123,6 +132,9 @@ class PGAgent(BaseAgent):
 
     def add_to_replay_buffer(self, paths):
         self.replay_buffer.add_rollouts(paths)
+        
+    def clear_mem(self):
+        self.replay_buffer.reset()
 
     def sample(self, batch_size):
         return self.replay_buffer.sample_recent_data(batch_size, concat_rew=False)
@@ -137,17 +149,30 @@ class PGAgent(BaseAgent):
     def _discounted_return(self, rewards):
         """
             Helper function
-
+    
             Input: list of rewards {r_0, r_1, ..., r_t', ... r_T} from a single rollout of length T
-
+    
             Output: list where each index t contains sum_{t'=0}^T gamma^t' r_{t'}
+                note that all entries of this output are equivalent
+                because each sum is from 0 to T (and doesnt involve t)
         """
-
+    
+        # create a list of indices (t'): from 0 to T
         indices = np.arange(len(rewards))
-        gamma_indices = np.power(self.gamma,indices)
-        discount_return = np.sum(gamma_indices * rewards)
-        list_of_discounted_returns = np.array([discount_return] * len(rewards))
-
+    
+        # create a list where the entry at each index (t') is gamma^(t')
+        discounts = self.gamma**indices
+    
+        # create a list where the entry at each index (t') is gamma^(t') * r_{t'}
+        discounted_rewards = discounts * rewards
+    
+        # scalar: sum_{t'=0}^T gamma^(t') * r_{t'}
+        sum_of_discounted_rewards = sum(discounted_rewards)
+    
+        # list where each entry t contains the same thing
+            # it contains sum_{t'=0}^T gamma^t' r_{t'}
+        list_of_discounted_returns = np.ones_like(rewards) * sum_of_discounted_rewards
+    
         return list_of_discounted_returns
 
     def _discounted_cumsum(self, rewards):
@@ -156,15 +181,27 @@ class PGAgent(BaseAgent):
             -takes a list of rewards {r_0, r_1, ..., r_t', ... r_T},
             -and returns a list where the entry in each index t' is sum_{t'=t}^T gamma^(t'-t) * r_{t'}
         """
-
-        indices = np.arange(len(rewards))
-        indices = np.arange(len(rewards))
-        indices_matrix = np.tile(indices, (len(indices), 1))
-        indices_matrix = (indices_matrix.T - indices).T
-        indices_matrix = np.where(indices_matrix <0, 0, indices_matrix)
-
-        gamma_matrix = np.triu(self.gamma ** indices_matrix)
-
-        list_of_discounted_cumsums = np.sum(gamma_matrix * rewards,axis=1)
-
+    
+        all_discounted_cumsums = []
+    
+        # for loop over steps (t) of the given rollout
+        for start_time_index in range(len(rewards)):
+    
+            # create a list of indices (t'): goes from t to T
+            indices = np.arange(start_time_index, len(rewards))
+    
+            # create a list of indices (t'-t)
+            indices_adjusted = indices - start_time_index
+    
+            # create a list where the entry at each index (t') is gamma^(t'-t)
+            discounts = self.gamma**(indices_adjusted) # each entry is gamma^(t'-t)
+    
+            # create a list where the entry at each index (t') is gamma^(t'-t) * r_{t'}
+            discounted_rtg = discounts * rewards[start_time_index:]
+    
+            # scalar: sum_{t'=t}^T gamma^(t'-t) * r_{t'}
+            sum_discounted_rtg = sum(discounted_rtg)
+            all_discounted_cumsums.append(sum_discounted_rtg)
+    
+        list_of_discounted_cumsums = np.array(all_discounted_cumsums)
         return list_of_discounted_cumsums

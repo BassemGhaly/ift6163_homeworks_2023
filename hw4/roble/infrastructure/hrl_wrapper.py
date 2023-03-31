@@ -1,20 +1,16 @@
 class HRLWrapper(object):
 
-    def __init__(self):
+    def __init__():
         # TODO
-        pass
     
-    def reset(self):
+    def reset():
         # Add code to generate a goal from a distribution
         # TODO
-        pass
 
-    def step(self):
+    def step():
         ## Add code to compute a new goal-conditioned reward
         # TODO
-        pass
         
-    def createState(self):
+    def createState():
         ## Add the goal to the state
         # TODO
-        pass

@@ -1,6 +1,5 @@
 from moviepy.editor import ImageSequenceClip
 from tensorboardX import SummaryWriter
-
 from pathlib import Path
 
 import numpy as np
@@ -46,8 +45,8 @@ class Logger:
         video_frames  = video_frames.transpose(0, 1, 3, 4, 2)
         for video_idx in range(len(video_frames)):
             clip = ImageSequenceClip(list(video_frames[video_idx]), fps=fps)
-            clip_name = f'{name}_step_{step}_video{video_idx+1}.gif'
-            clip.write_gif(self.log_video_path / clip_name, fps=fps)
+            clip_name = f'{name}_step_{step}_video{video_idx+1}.mp4'
+            clip.write_videofile(str(self.log_video_path / clip_name), fps=fps, verbose=False)
 
     def log_paths_as_videos(self, paths, step, max_videos_to_save=2, fps=10, video_title='video'):
 

@@ -1,9 +1,9 @@
 import numpy as np
 
-from hw4.roble.infrastructure.replay_buffer import ReplayBuffer
-from hw4.roble.infrastructure.dqn_utils import MemoryOptimizedReplayBuffer
-from hw4.roble.policies.MLP_policy import MLPPolicyDeterministic
-from hw4.roble.critics.ddpg_critic import DDPGCritic
+from hw1.roble.infrastructure.replay_buffer import ReplayBuffer
+from hw3.roble.infrastructure.dqn_utils import MemoryOptimizedReplayBuffer
+from hw3.roble.policies.MLP_policy import MLPPolicyDeterministic
+from hw3.roble.critics.ddpg_critic import DDPGCritic
 import copy
 from termcolor import colored
 

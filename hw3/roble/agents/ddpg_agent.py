@@ -22,7 +22,7 @@ class DDPGAgent(object):
         self.target_update_freq = agent_params['alg']['target_update_freq']
 
         self.replay_buffer_idx = None
-        self.optimizer_spec = agent_params['optimizer_spec']
+        self.optimizer_spec = agent_params['alg']['optimizer_spec']
         
         self.actor = MLPPolicyDeterministic(
             self.agent_params['alg']['ac_dim'],

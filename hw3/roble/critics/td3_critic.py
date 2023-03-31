@@ -59,6 +59,5 @@ class TD3Critic(DDPGCritic):
         }
 
     def update_target_network(self):
-        TODO
         pass
 

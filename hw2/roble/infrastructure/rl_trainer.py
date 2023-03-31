@@ -61,14 +61,14 @@ class RL_Trainer(RL_Trainer):
         # Are the observations images?
         img = len(self.env.observation_space.shape) > 2
 
-        self.params['agent_params']['discrete'] = discrete
+        self.params['alg']['discrete'] = discrete
 
         # Observation and action sizes
 
         ob_dim = self.env.observation_space.shape if img else self.env.observation_space.shape[0]
         ac_dim = self.env.action_space.n if discrete else self.env.action_space.shape[0]
-        self.params['agent_params']['ac_dim'] = ac_dim
-        self.params['agent_params']['ob_dim'] = ob_dim
+        self.params['alg']['ac_dim'] = ac_dim
+        self.params['alg']['ob_dim'] = ob_dim
 
         # simulation timestep, will be used for video saving
         if 'model' in dir(self.env):
@@ -85,7 +85,7 @@ class RL_Trainer(RL_Trainer):
         ## AGENT
         #############
 
-        self.agent = agent_class(self.env, self.params['agent_params'])
+        self.agent = agent_class(self.env, self.params['alg'])
         
     def create_env(self, env_name):
         self.env = gym.make(env_name)
@@ -239,7 +239,10 @@ class RL_Trainer(RL_Trainer):
                 print('{} : {}'.format(key, value))
                 self.logger.log_file(value, key,itr)
                 self.logger.log_scalar(value, key, itr)
-            print('Done logging...\n\n')
+                
+            self.logger_table.record_dict(logs, prefix='trainer/')
+            self.logger_table.dump_tabular(with_prefix=False, with_timestamp=False)
+            print('Done logging MBRL...\n\n')
 
             self.logger.flush()
 

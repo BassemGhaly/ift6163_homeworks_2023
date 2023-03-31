@@ -4,8 +4,9 @@ import numpy as np
 import torch
 import hw4.roble.util.class_util as classu
 
-from hw4.roble.infrastructure import pytorch_util as ptu
-from hw4.roble.policies.base_policy import BasePolicy
+from hw1.roble.infrastructure import pytorch_util as ptu
+from hw1.roble.policies.base_policy import BasePolicy
+from hw4.roble.infrastructure.utils import normalize
 from torch import nn
 from torch.nn import functional as F
 from torch import optim
@@ -24,6 +25,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                  training=True,
                  nn_baseline=False,
                  deterministic=False,
+                 learn_policy_std=True,
                  **kwargs
                  ):
         super().__init__(**kwargs)
@@ -52,14 +54,21 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                     self._learning_rate
                 )
             else:
-                self._logstd = nn.Parameter(
-                    torch.zeros(self._ac_dim, dtype=torch.float32, device=ptu.device)
+                self._std = nn.Parameter(
+                    torch.ones(self._ac_dim, dtype=torch.float32, device=ptu.device) * 0.2
                 )
-                self._logstd.to(ptu.device)
-                self._optimizer = optim.Adam(
-                    itertools.chain([self._logstd], self._mean_net.parameters()),
-                    self._learning_rate
-                )
+                self._std.to(ptu.device)
+                if self._learn_policy_std:
+                    self._optimizer = optim.Adam(
+                        itertools.chain([self._std], self._mean_net.parameters()),
+                        self._learning_rate
+                    )
+                else:
+                    self._optimizer = optim.Adam(
+                        itertools.chain(self._mean_net.parameters()),
+                        self._learning_rate
+                    )
+                
 
         if nn_baseline:
             self._baseline = ptu.build_mlp(
@@ -112,7 +121,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                 action_distribution = TODO
             else:
                 batch_mean = self._mean_net(observation)
-                scale_tril = torch.diag(torch.exp(self._logstd))
+                scale_tril = torch.diag(self._std)
+                # print ("scale_tril:", scale_tril)
                 batch_dim = batch_mean.shape[0]
                 batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
                 action_distribution = distributions.MultivariateNormal(
@@ -170,6 +180,8 @@ class MLPPolicyStochastic(MLPPolicy):
         return loss.item()
     
 class MLPPolicyPG(MLPPolicy):
+    
+    @classu.hidden_member_initialize
     def __init__(self, ac_dim, ob_dim, n_layers, size, **kwargs):
 
         super().__init__(ac_dim, ob_dim, n_layers, size, **kwargs)
@@ -179,23 +191,31 @@ class MLPPolicyPG(MLPPolicy):
         observations = ptu.from_numpy(observations)
         actions = ptu.from_numpy(actions)
         advantages = ptu.from_numpy(advantages)
-        if self.nn_baseline:
-            q_values_norm = (q_values - q_values.mean()) / (q_values.std() + 1e-8)
-            baseline_targets = ptu.from_numpy(q_values_norm)
-            
-            self._baseline_optimizer.zero_grad() 
-            baseline_loss = self.baseline_loss(self.baseline(observations).squeeze(), baseline_targets)
-            baseline_loss.backward()
-            self._baseline_optimizer.step()
 
+        action_distribution = self(observations)
+        loss = - action_distribution.log_prob(actions) * advantages
+        loss = loss.mean()
+    
         self._optimizer.zero_grad()
-        loss = -(self(observations).log_prob(actions) * (advantages)).mean()
         loss.backward()
         self._optimizer.step()
-
+        
         train_log = {
-            'Training Loss': ptu.to_numpy(loss),
+            'Training_Loss': ptu.to_numpy(loss),
         }
+        if self._nn_baseline:
+            targets_n = normalize(q_values, np.mean(q_values), np.std(q_values))
+            targets_n = ptu.from_numpy(targets_n)
+            baseline_predictions = self._baseline(observations).squeeze()
+            assert baseline_predictions.dim() == baseline_predictions.dim()
+    
+            baseline_loss = F.mse_loss(baseline_predictions, targets_n)
+            self._baseline_optimizer.zero_grad()
+            baseline_loss.backward()
+            self._baseline_optimizer.step()
+            train_log["Critic_Loss"] = ptu.to_numpy(baseline_loss)
+        else:
+            train_log["Critic_Loss"] = ptu.to_numpy(0)
 
         return train_log
 
@@ -210,5 +230,5 @@ class MLPPolicyPG(MLPPolicy):
 
         """
         observations = ptu.from_numpy(observations)
-        pred = self.baseline(observations)
+        pred = self._baseline(observations)
         return ptu.to_numpy(pred.squeeze())

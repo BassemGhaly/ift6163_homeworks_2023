@@ -64,6 +64,5 @@ class SACCritic(DDPGCritic):
         }
 
     def update_target_network(self):
-        TODO
         pass
 
