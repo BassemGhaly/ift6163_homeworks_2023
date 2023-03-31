@@ -139,7 +139,7 @@ if __name__ == '__main__':
     for e in range(25):
         for i in range(500):
             a = env.action_space.sample()
-            print ("action", a)
+            # print ("action", a)
             obs, _, _, _ = env.step(a)
             hand_pos = obs[-6:-3]
             hand_poses.append(hand_pos)

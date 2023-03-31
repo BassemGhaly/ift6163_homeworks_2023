@@ -159,6 +159,47 @@ class RL_Trainer(RL_Trainer):
                 if self.params['logging']['save_params']:
                     self.agent.save('{}/agent_itr_{}.pt'.format(self.params['logging']['logdir'], itr))
 
+    def collect_training_trajectories(
+            self,
+            itr,
+            load_initial_expertdata,
+            collect_policy,
+            batch_size,
+    ):
+        from hw2.roble.infrastructure import utils
+        """
+        :param itr:
+        :param load_initial_expertdata:  path to expert data pkl file
+        :param collect_policy:  the current policy using which we collect data
+        :param batch_size:  the number of transitions we collect
+        :return:
+            paths: a list trajectories
+            envsteps_this_batch: the sum over the numbers of environment steps in paths
+            train_video_paths: paths which also contain videos for visualization purposes
+        """
+
+        if itr == 0:
+            if load_initial_expertdata:
+                paths = pickle.load(open(self.params['env']['expert_data'], 'rb'))
+                return paths, 0, None
+            else:
+                num_transitions_to_sample = self.params['alg']['batch_size_initial']
+        else:
+            num_transitions_to_sample = self.params['alg']['batch_size']
+    
+        print("\nCollecting data to be used for training...")
+        paths, envsteps_this_batch = utils.sample_trajectories(
+            self.env, collect_policy, num_transitions_to_sample, self.params['env']['max_episode_length'])
+        # collect more rollouts with the same policy, to be saved as videos in tensorboard
+        # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
+
+        train_video_paths = None
+        if self.log_video:
+            print('\nCollecting train rollouts to be used for saving videos...')
+
+            train_video_paths = utils.sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
+        return paths, envsteps_this_batch, train_video_paths
+
     ####################################
     ####################################
 

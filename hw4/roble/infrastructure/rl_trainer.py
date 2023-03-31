@@ -13,13 +13,13 @@ from hw2.roble.infrastructure.rl_trainer import RL_Trainer
 from hw4.roble.infrastructure import pytorch_util as ptu
 from hw4.roble.infrastructure import utils
 from hw4.roble.infrastructure.logger import Logger
-from hw4.roble.agents.dqn_agent import DQNAgent
-from hw4.roble.agents.ddpg_agent import DDPGAgent
-from hw4.roble.agents.td3_agent import TD3Agent
-from hw4.roble.agents.sac_agent import SACAgent
+from hw3.roble.agents.dqn_agent import DQNAgent
+from hw3.roble.agents.ddpg_agent import DDPGAgent
+from hw3.roble.agents.td3_agent import TD3Agent
+from hw3.roble.agents.sac_agent import SACAgent
 from hw4.roble.agents.pg_agent import PGAgent
 
-from hw4.roble.infrastructure.dqn_utils import (
+from hw3.roble.infrastructure.dqn_utils import (
         get_wrapper_by_name
 )
 from hw4.roble.envs.ant.create_maze_env import create_maze_env
@@ -95,7 +95,7 @@ class RL_Trainer(RL_Trainer):
         self.total_envsteps = 0
         self.start_time = time.time()
 
-        print_period = 1000 if isinstance(self.agent, DQNAgent) else 1
+        print_period = 1
 
         for itr in range(n_iter):
             if itr % print_period == 0:
@@ -152,14 +152,8 @@ class RL_Trainer(RL_Trainer):
             if self.logvideo or self.logmetrics:
                 # perform logging
                 print('\nBeginning logging procedure...')
-                if isinstance(self.agent, DQNAgent):
-                    self.perform_dqn_logging(itr, all_logs)
-                
-                elif isinstance(self.agent, DDPGAgent):
-                    self.perform_ddpg_logging(itr,all_logs)
-                    
-                else:
-                    self.perform_logging(itr, paths, eval_policy, train_video_paths, all_logs)
+
+                self.perform_logging(itr, paths, eval_policy, train_video_paths, all_logs)
 
                 if self.params['logging']['save_params']:
                     self.agent.save('{}/agent_itr_{}.pt'.format(self.params['logging']['logdir'], itr))
@@ -169,42 +163,6 @@ class RL_Trainer(RL_Trainer):
 
     ####################################
     ####################################
-    def perform_dqn_logging(self, itr, all_logs):
-        last_log = all_logs[-1]
-
-        episode_rewards = get_wrapper_by_name(self.env, "Monitor").get_episode_rewards()
-        if len(episode_rewards) > 0:
-            self.mean_episode_reward = np.mean(episode_rewards[-100:])
-        if len(episode_rewards) > 100:
-            self.best_mean_episode_reward = max(self.best_mean_episode_reward, self.mean_episode_reward)
-
-        logs = OrderedDict()
-
-        logs["Train_EnvstepsSoFar"] = self.agent.t
-        print("Timestep %d" % (self.agent.t,))
-        if self.mean_episode_reward > -5000:
-            logs["Train_AverageReturn"] = np.mean(self.mean_episode_reward)
-        print("mean reward (100 episodes) %f" % self.mean_episode_reward)
-        if self.best_mean_episode_reward > -5000:
-            logs["Train_BestReturn"] = np.mean(self.best_mean_episode_reward)
-        print("best mean reward %f" % self.best_mean_episode_reward)
-
-        if self.start_time is not None:
-            time_since_start = (time.time() - self.start_time)
-            print("running time %f" % time_since_start)
-            logs["TimeSinceStart"] = time_since_start
-
-        logs.update(last_log)
-
-        sys.stdout.flush()
-
-        for key, value in logs.items():
-            print('{} : {}'.format(key, value))
-            self.logger.log_scalar(value, key, self.agent.t)
-        self.logger.log_file(itr, logs)
-        print('Done DQN logging...\n\n')
-
-        self.logger.flush()
         
     def create_env(self, env_name):
         # Make the gym environment
@@ -226,70 +184,6 @@ class RL_Trainer(RL_Trainer):
             pass
         
         return env
-        
-    def perform_ddpg_logging(self, itr,all_logs):        
-        logs = OrderedDict()
-        logs["Train_EnvstepsSoFar"] = self.agent.t
-        
-        n = 25
-        if len(self.agent.rewards) > 0:
-            self.mean_episode_reward = np.mean(np.array(self.agent.rewards)[-n:])
-            
-            logs["Train_AverageReturn"] = self.mean_episode_reward
-            logs["Train_CurrentReturn"] = self.agent.rewards[-1]
-            
-        if len(self.agent.rewards) > n:
-            self.best_mean_episode_reward = max(self.best_mean_episode_reward, self.mean_episode_reward)
-            
-            logs["Train_BestReturn"] = self.best_mean_episode_reward
-            
-        if len(self.agent.rewards) > 5 * n:   
-            self.agent.rewards = self.agent.rewards[n:]
-            
-        if self.start_time is not None:
-            time_since_start = (time.time() - self.start_time)
-            logs["TimeSinceStart"] = time_since_start
-        
-        Q_predictions = []
-        Q_targets = []
-        policy_actions_mean = []
-        policy_actions_std = []
-        actor_actions_mean = []
-        critic_loss = []
-        actor_loss = []
-        print_all_logs = True
-        for log in all_logs:
-            if len(log) > 0:
-                print_all_logs = True
-                #print(Q_predictions)
-                Q_predictions.append(np.mean(log["Critic"]["Q Predictions"]))
-                Q_targets.append(np.mean((log["Critic"]["Q Targets"])))
-                policy_actions_mean.append(np.mean((log["Critic"]["Policy Actions"])))
-                policy_actions_std.append(np.std((log["Critic"]["Policy Actions"])))
-                actor_actions_mean.append(np.mean((log["Critic"]["Actor Actions"])))
-                critic_loss.append(log["Critic"]["Training Loss"])
-                
-                if "Actor" in log.keys():
-                    actor_loss.append(log["Actor"])
-                
-        if print_all_logs:
-            logs["Q_Predictions"] = np.mean(np.array(Q_predictions))
-            logs["Q_Targets"] = np.mean(np.array(Q_targets))
-            logs["Policy_Actions_Mean"] = np.mean(np.array(policy_actions_mean))
-            logs["Policy_Actions_Std"] = np.mean(np.array(policy_actions_std))
-            logs["Actor_Actions"] = np.mean(np.array(actor_actions_mean))
-            logs["Critic_Loss"] = np.mean(np.array(critic_loss))
-            
-            if len(actor_loss) > 0:
-                logs["Actor_Loss"] = np.mean(np.array(actor_loss))
-            
-        for key, value in logs.items():
-            print('{} : {}'.format(key, value))
-            self.logger.log_scalar(value, key, self.agent.t)
-        self.logger.log_file(itr, logs)
-        print('Done DDPG logging...\n\n')
-        #logs.update(last_log)
-        self.logger.flush()
 
     def perform_logging(self, itr, paths, eval_policy, train_video_paths, all_logs):
         
