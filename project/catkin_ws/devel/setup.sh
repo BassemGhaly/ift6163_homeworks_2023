@@ -21,7 +21,7 @@ else
   CATKIN_SHELL=sh
 fi
 
-: ${_CATKIN_SETUP_DIR:=/home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/devel}
+: ${_CATKIN_SETUP_DIR:=/home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/devel}
 : ${_CONDA_SETUP_DIR:=$CONDA_PREFIX/etc/conda/activate.d/}
 _SETUP_UTIL="$_CATKIN_SETUP_DIR/_setup_util.py"
 

@@ -270,7 +270,11 @@ if __name__ == '__main__':
 
         if not args.local:
             # environment at generation time
+<<<<<<< Updated upstream:project/catkin_ws/catkin_ws/devel/_setup_util.py
             CMAKE_PREFIX_PATH = r'/home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/devel;/home/bassem/anaconda3/envs/ros_env;/home/bassem/anaconda3/envs/ros_env/x86_64-conda-linux-gnu/sysroot/usr'.split(';')
+=======
+            CMAKE_PREFIX_PATH = r'/home/cyrille/anaconda3/envs/robostackenv;/home/cyrille/anaconda3/envs/robostackenv/x86_64-conda-linux-gnu/sysroot/usr'.split(';')
+>>>>>>> Stashed changes:project/catkin_ws/devel/_setup_util.py
         else:
             # don't consider any other prefix path than this one
             CMAKE_PREFIX_PATH = []
