@@ -60,7 +60,7 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         # We create two arrays based on the binary values that will be assigned
         # In the discretization method.
         laser_scan = self._check_laser_scan_ready()
-        num_laser_readings = len(laser_scan.ranges)/self.new_ranges
+        num_laser_readings = int(len(laser_scan.ranges)/self.new_ranges)
         high = numpy.full((num_laser_readings), self.max_laser_value)
         low = numpy.full((num_laser_readings), self.min_laser_value)
         
