@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     # Starts the main training loop: the one about the episodes to do
     for x in range(nepisodes):
-        rospy.logdebug("############### START EPISODE=>" + str(x))
+        rospy.logwarn("############### START EPISODE=>" + str(x))
 
         cumulated_reward = 0
         done = False

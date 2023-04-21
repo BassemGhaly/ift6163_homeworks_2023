@@ -68,7 +68,7 @@ class TurtleBot3Env(robot_gazebo_env.RobotGazeboEnv):
         rospy.Subscriber("/odom", Odometry, self._odom_callback)
         rospy.Subscriber("/imu", Imu, self._imu_callback)
         rospy.Subscriber("/scan", LaserScan, self._laser_scan_callback)
-
+        
         self._cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
 
         self._check_publishers_connection()
@@ -254,13 +254,13 @@ class TurtleBot3Env(robot_gazebo_env.RobotGazeboEnv):
             current_odometry = self._check_odom_ready()
             # IN turtlebot3 the odometry angular readings are inverted, so we have to invert the sign.
             odom_linear_vel = current_odometry.twist.twist.linear.x
-            odom_angular_vel = -1*current_odometry.twist.twist.angular.z
+            odom_angular_vel = current_odometry.twist.twist.angular.z
             
             rospy.logdebug("Linear VEL=" + str(odom_linear_vel) + ", ?RANGE=[" + str(linear_speed_minus) + ","+str(linear_speed_plus)+"]")
             rospy.logdebug("Angular VEL=" + str(odom_angular_vel) + ", ?RANGE=[" + str(angular_speed_minus) + ","+str(angular_speed_plus)+"]")
             
             linear_vel_are_close = (odom_linear_vel <= linear_speed_plus) and (odom_linear_vel > linear_speed_minus)
-            angular_vel_are_close = (odom_angular_vel <= angular_speed_plus) and (odom_angular_vel > angular_speed_minus)
+            angular_vel_are_close = (odom_angular_vel <= angular_speed_plus) and (odom_angular_vel> angular_speed_minus)
             
             if linear_vel_are_close and angular_vel_are_close:
                 rospy.logdebug("Reached Velocity!")

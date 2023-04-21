@@ -9,6 +9,7 @@ project(openai_turtlebot3)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   openai_ros
+  depthimage_to_laserscan
   rospy
 )
 
