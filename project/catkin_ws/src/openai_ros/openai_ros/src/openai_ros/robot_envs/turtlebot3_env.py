@@ -59,7 +59,7 @@ class TurtleBot3Env(robot_gazebo_env.RobotGazeboEnv):
 
 
 
-
+        self.never_reach = False
         self.gazebo.unpauseSim()
         #self.controllers_object.reset_controllers()
         self._check_all_sensors_ready()
@@ -238,7 +238,7 @@ class TurtleBot3Env(robot_gazebo_env.RobotGazeboEnv):
         start_wait_time = rospy.get_rostime().to_sec()
         end_wait_time = 0.0
         epsilon = 0.05
-        
+        number_try = 80
         rospy.logdebug("Desired Twist Cmd>>" + str(cmd_vel_value))
         rospy.logdebug("epsilon>>" + str(epsilon))
         
@@ -249,7 +249,7 @@ class TurtleBot3Env(robot_gazebo_env.RobotGazeboEnv):
         linear_speed_minus = linear_speed - epsilon
         angular_speed_plus = angular_speed + epsilon
         angular_speed_minus = angular_speed - epsilon
-        
+        current_try = 0 
         while not rospy.is_shutdown():
             current_odometry = self._check_odom_ready()
             # IN turtlebot3 the odometry angular readings are inverted, so we have to invert the sign.
@@ -266,8 +266,12 @@ class TurtleBot3Env(robot_gazebo_env.RobotGazeboEnv):
                 rospy.logdebug("Reached Velocity!")
                 end_wait_time = rospy.get_rostime().to_sec()
                 break
+            elif current_try>=number_try:
+                self.never_reach = True
+                break
             rospy.logdebug("Not there yet, keep waiting...")
             rate.sleep()
+            current_try += 1
         delta_time = end_wait_time- start_wait_time
         rospy.logdebug("[Wait Time=" + str(delta_time)+"]")
         

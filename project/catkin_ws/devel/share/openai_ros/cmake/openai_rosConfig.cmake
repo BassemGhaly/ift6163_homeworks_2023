@@ -67,14 +67,14 @@ set(openai_ros_CONFIG_INCLUDED TRUE)
 
 # set variables for source/devel/install prefixes
 if("TRUE" STREQUAL "TRUE")
-  set(openai_ros_SOURCE_PREFIX /home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/src/openai_ros/openai_ros)
-  set(openai_ros_DEVEL_PREFIX /home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/devel)
+  set(openai_ros_SOURCE_PREFIX /home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/src/openai_ros/openai_ros)
+  set(openai_ros_DEVEL_PREFIX /home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/devel)
   set(openai_ros_INSTALL_PREFIX "")
   set(openai_ros_PREFIX ${openai_ros_DEVEL_PREFIX})
 else()
   set(openai_ros_SOURCE_PREFIX "")
   set(openai_ros_DEVEL_PREFIX "")
-  set(openai_ros_INSTALL_PREFIX /home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/install)
+  set(openai_ros_INSTALL_PREFIX /home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/install)
   set(openai_ros_PREFIX ${openai_ros_INSTALL_PREFIX})
 endif()
 
@@ -91,9 +91,9 @@ endif()
 # flag project as catkin-based to distinguish if a find_package()-ed project is a catkin project
 set(openai_ros_FOUND_CATKIN_PROJECT TRUE)
 
-if(NOT "/home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/devel/include " STREQUAL " ")
+if(NOT "/home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/devel/include " STREQUAL " ")
   set(openai_ros_INCLUDE_DIRS "")
-  set(_include_dirs "/home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/devel/include")
+  set(_include_dirs "/home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/devel/include")
   if(NOT " " STREQUAL " ")
     set(_report "Check the issue tracker '' and consider creating a ticket if the problem has not been reported yet.")
   elseif(NOT " " STREQUAL " ")
@@ -110,7 +110,7 @@ if(NOT "/home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/deve
         message(FATAL_ERROR "Project 'openai_ros' specifies '${idir}' as an include dir, which is not found.  It does not exist in '${include}'.  ${_report}")
       endif()
     else()
-      message(FATAL_ERROR "Project 'openai_ros' specifies '${idir}' as an include dir, which is not found.  It does neither exist as an absolute directory nor in '/home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/src/openai_ros/openai_ros/${idir}'.  ${_report}")
+      message(FATAL_ERROR "Project 'openai_ros' specifies '${idir}' as an include dir, which is not found.  It does neither exist as an absolute directory nor in '/home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/src/openai_ros/openai_ros/${idir}'.  ${_report}")
     endif()
     _list_append_unique(openai_ros_INCLUDE_DIRS ${include})
   endforeach()
@@ -156,7 +156,7 @@ foreach(library ${libraries})
     set(lib_path "")
     set(lib "${library}-NOTFOUND")
     # since the path where the library is found is returned we have to iterate over the paths manually
-    foreach(path /home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/devel/lib;/home/bassem/RobotLearning/ift6163_homeworks_2023/project/catkin_ws/devel/lib;/home/bassem/anaconda3/envs/ros_env/lib)
+    foreach(path /home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/devel/lib;/home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/devel/lib;/home/cyrille/anaconda3/envs/ros_env/lib)
       find_library(lib ${library}
         PATHS ${path}
         NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
