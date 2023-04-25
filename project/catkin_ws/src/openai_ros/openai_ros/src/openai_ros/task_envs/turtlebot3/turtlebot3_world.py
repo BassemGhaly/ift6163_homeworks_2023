@@ -23,12 +23,17 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         """
         
         # Only variable needed to be set here
+        self.observation_dim = 366 # laser point 5, current pose 3, target pose 3
+        self.action_dim = 2
         number_actions = rospy.get_param('/turtlebot3/n_actions')
-        self.action_space = spaces.Discrete(number_actions)
+        #self.action_space = spaces.Discrete(number_actions)
+        self.low_action = numpy.array([-0.25, -1.5])
+        self.high_action = numpy.array([0.25, 1.5])
+        self.action_space = spaces.Box(self.low_action, self.high_action)
         
         # We set the reward range, which is not compulsory but here we do it.
         self.reward_range = (-numpy.inf, numpy.inf)
-        
+        self.reached = False
         
         #number_observations = rospy.get_param('/turtlebot3/n_observations')
         """
@@ -61,12 +66,17 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         # In the discretization method.
         laser_scan = self._check_laser_scan_ready()
         num_laser_readings = int(len(laser_scan.ranges)/self.new_ranges)
-        high = numpy.full((num_laser_readings), self.max_laser_value)
-        low = numpy.full((num_laser_readings), self.min_laser_value)
-        
+        #rospy.logwarn('num laser reading' +  str(num_laser_readings))
+        # --- remove commented line below
+        #self.high_obs = numpy.full((self.new_ranges+6), self.max_laser_value)
+        #self.low_obs = numpy.full((self.new_ranges+6), self.min_laser_value)
+        #self.low_obs[-6:] = numpy.array([-20,-20,-20,-20,-20,-20])
+        #self.high_obs[-6:] = numpy.array([30,30,30,30,30,30])
+        self.high_obs = numpy.array([-3.5, 0.40, 0.0, -3.5, 0.40, 0.0 ])
+        self.low_obs = numpy.array([-2.12, 180, 0, -2.12, 1.80, 0])
         # We only use two integers
-        self.observation_space = spaces.Box(low, high)
-        
+        self.observation_space = spaces.Box(self.low_obs, self.high_obs)
+        #rospy.logwarn('test sur l''observation' +  str(self.observation_space.shape))
         rospy.logdebug("ACTION SPACES TYPE===>"+str(self.action_space))
         rospy.logdebug("OBSERVATION SPACES TYPE===>"+str(self.observation_space))
         
@@ -76,6 +86,10 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         self.end_episode_points = rospy.get_param("/turtlebot3/end_episode_points")
 
         self.cumulated_steps = 0.0
+        self.goal = numpy.zeros(3)
+        self.goal[0] = numpy.random.uniform(low=-10, high=10)
+        self.goal[1] = numpy.random.uniform(low=-8, high=0)
+        self.goal[2] = numpy.random.uniform(low=0, high=0)
 
         # Here we will add any init functions prior to starting the MyRobotEnv
         super(TurtleBot3WorldEnv, self).__init__()
@@ -102,6 +116,19 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         # Set to false Done, because its calculated asyncronously
         self._episode_done = False
 
+    def setGoal(self, goal):
+        self.goal[0] = goal[0]
+        self.goal[1] = goal[1]
+        self.goal[2] = goal[2]
+        
+    def denormalize(self, value):
+        value[0] = (value[0]*3 - 1.5)
+        value[1] = (value[1]*0.5 - 0.25)
+        return value
+    def normalize(self, value):
+        value[0] = (value[0] + 1.5)/3
+        value[1] = (value[0] + 0.25)/0.5
+        return value
 
     def _set_action(self, action):
         """
@@ -109,21 +136,17 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         based on the action number given.
         :param action: The action integer that set s what movement to do next.
         """
-        
+        #action = self.denormalize(action)
         rospy.logdebug("Start Set Action ==>"+str(action))
         # We convert the actions to speed movements to send to the parent class CubeSingleDiskEnv
-        if action == 0: #FORWARD
-            linear_speed = self.linear_forward_speed
-            angular_speed = 0.0
-            self.last_action = "FORWARDS"
-        elif action == 1: #LEFT
-            linear_speed = self.linear_turn_speed
-            angular_speed = self.angular_speed
-            self.last_action = "TURN_LEFT"
-        elif action == 2: #RIGHT
-            linear_speed = self.linear_turn_speed
-            angular_speed = -1*self.angular_speed
-            self.last_action = "TURN_RIGHT"
+        
+        linear_speed = action[0]
+        angular_speed = action[1]
+        
+        rospy.logwarn('linear speed :' +  str(linear_speed))
+        rospy.logwarn('angular speed : ' + str(angular_speed))
+        self.last_action = "FORWARDS"
+        
         
         # We tell TurtleBot2 the linear and angular speed to set to execute
         self.move_base(linear_speed, angular_speed, epsilon=0.05, update_rate=10)
@@ -141,19 +164,29 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         # We get the laser scan data
         laser_scan = self.get_laser_scan()
         
-        discretized_observations = self.discretize_scan_observation(    laser_scan,
-                                                                        self.new_ranges
-                                                                        )
-
+        #discretized_observations = self.discretize_scan_observation(    laser_scan,
+        #                                                                self.new_ranges
+        #                                                                )
+        discretized_observations = []
+        discretized_observations.append(self.get_odom().pose.pose.position.x)
+        discretized_observations.append(self.get_odom().pose.pose.position.y)
+        discretized_observations.append(self.get_odom().pose.pose.position.z)
+        discretized_observations.append(self.goal[0])
+        discretized_observations.append(self.goal[1])
+        discretized_observations.append(self.goal[2])
         rospy.logdebug("Observations==>"+str(discretized_observations))
         rospy.logdebug("END Get Observation ==>")
-        return discretized_observations
+        return numpy.array(discretized_observations)
         
 
     def _is_done(self, observations):
         
         if self._episode_done:
             rospy.logerr("TurtleBot2 is Too Close to wall==>")
+        elif self.never_reach or self.reached:
+            self._episode_done = True
+            self.reached = False
+            rospy.logerr('Weird behavior with controller , command unreachable for some tries')
         else:
             rospy.logwarn("TurtleBot2 is NOT close to a wall ==>")
             
@@ -170,7 +203,7 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         return self._episode_done
 
     def _compute_reward(self, observations, done):
-
+        '''
         if not done:
             if self.last_action == "FORWARDS":
                 reward = self.forwards_reward
@@ -185,9 +218,31 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         rospy.logdebug("Cumulated_reward=" + str(self.cumulated_reward))
         self.cumulated_steps += 1
         rospy.logdebug("Cumulated_steps=" + str(self.cumulated_steps))
+        '''
+        self.reward_dict = {}
+        if(len(observations.shape)==1):
+            observations = numpy.expand_dims(observations, axis = 0)
+            batch_mode = False
+        else:
+            batch_mode = True
         
-        return reward
+        #get vars
+        hand_pos = observations[:, -6:-3]
+        target_pos = observations[:, -3:]
 
+        #calc rew
+        initial_pose_robot = numpy.array([-3, 1, 0])
+        dist = numpy.linalg.norm(hand_pos - (target_pos+initial_pose_robot), axis=1)
+        if dist <= 0.025:
+            self.reached = True
+            rospy.logwarn('Target reached.........')
+        self.reward_dict['r_total'] = -1*dist
+        if self.never_reach:
+            self.reward_dict['r_total'] = [-200, 0]
+            self.never_reach = False
+        if(not batch_mode):
+            return self.reward_dict['r_total'][0]
+        return self.reward_dict['r_total']
 
     # Internal TaskEnv Methods
     
@@ -212,13 +267,13 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
                 elif numpy.isnan(item):
                     discretized_ranges.append(self.min_laser_value)
                 else:
-                    discretized_ranges.append(int(item))
+                    discretized_ranges.append((item))
                     
                 if (self.min_range > item > 0):
                     rospy.logerr("done Validation >>> item=" + str(item)+"< "+str(self.min_range))
                     self._episode_done = True
                 else:
-                    rospy.logdebug("NOT done Validation >>> item=" + str(item)+"< "+str(self.min_range))
+                    rospy.logdebug("NOT done Validation >>> item=" + str(item)+"> "+str(self.min_range))
                     
 
         return discretized_ranges
