@@ -1,6 +1,6 @@
 import numpy as np
 import time
-
+import rospy
 ############################################
 ############################################
 
@@ -56,7 +56,7 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
         paths.append(path)
         #count steps
         timesteps_this_batch += get_pathlength(path)
-        print('At timestep:    ', timesteps_this_batch, '/', min_timesteps_per_batch, end='\r')
+        rospy.logwarn('At timestep:    ', timesteps_this_batch, '/', min_timesteps_per_batch, end='\r')
     return paths, timesteps_this_batch
 
 def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, render_mode=('rgb_array')):

@@ -10,7 +10,7 @@ from hw2.roble.agents.mb_agent import MBAgent
 from hw2.roble.infrastructure import utils
 # register all of our envs
 from hw2.roble.envs import register_envs
-
+import rospy
 import gym
 import numpy as np
 import pickle
@@ -143,7 +143,7 @@ class RL_Trainer(RL_Trainer):
 
             # train agent (using sampled data from replay buffer)
             if itr % print_period == 0:
-                print("\nTraining agent...")
+                rospy.logwarn("\nTraining agent...")
             all_logs = self.train_agent()
 
             # if there is a model, log model predictions
@@ -177,7 +177,7 @@ class RL_Trainer(RL_Trainer):
             envsteps_this_batch: the sum over the numbers of environment steps in paths
             train_video_paths: paths which also contain videos for visualization purposes
         """
-
+        rospy.logwarn('iteration in collecting training trajectories......' + str(itr))
         if itr == 0:
             if load_initial_expertdata:
                 paths = pickle.load(open(self.params['env']['expert_data'], 'rb'))
@@ -187,7 +187,7 @@ class RL_Trainer(RL_Trainer):
         else:
             num_transitions_to_sample = self.params['alg']['batch_size']
     
-        print("\nCollecting data to be used for training...")
+        rospy.logwarn("\nCollecting data to be used for training...")
         paths, envsteps_this_batch = utils.sample_trajectories(
             self.env, collect_policy, num_transitions_to_sample, self.params['env']['max_episode_length'])
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
@@ -195,7 +195,7 @@ class RL_Trainer(RL_Trainer):
 
         train_video_paths = None
         if self.log_video:
-            print('\nCollecting train rollouts to be used for saving videos...')
+            rospy.logwarn('\nCollecting train rollouts to be used for saving videos...')
 
             train_video_paths = utils.sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
         return paths, envsteps_this_batch, train_video_paths
@@ -204,7 +204,7 @@ class RL_Trainer(RL_Trainer):
     ####################################
 
     def train_agent(self):
-        print('\nTraining agent using sampled data from replay buffer...')
+        rospy.logwarn('\nTraining agent using sampled data from replay buffer...')
         all_logs = []
         for train_step in range(self.params['alg']['num_agent_train_steps_per_iter']):
             ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch = self.agent.sample(self.params['alg']['train_batch_size'])

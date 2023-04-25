@@ -4,7 +4,7 @@ import time
 
 import gym
 import torch, pickle
-
+import rospy
 from hw1.roble.infrastructure import pytorch_util as ptu
 from hw1.roble.infrastructure.logger import Logger
 from hw1.roble.infrastructure.logging import Logger as TableLogger
