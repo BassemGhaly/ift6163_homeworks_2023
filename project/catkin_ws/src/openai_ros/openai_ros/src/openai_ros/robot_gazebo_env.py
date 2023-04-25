@@ -1,8 +1,10 @@
-import rospy
+import rospy, numpy
 import gym
 from gym.utils import seeding
 from .gazebo_connection import GazeboConnection
 from .controllers_connection import ControllersConnection
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Pose
 #https://bitbucket.org/theconstructcore/theconstruct_msgs/src/master/msg/RLExperimentInfo.msg
 from openai_ros.msg import RLExperimentInfo
 
@@ -10,7 +12,23 @@ from openai_ros.msg import RLExperimentInfo
 class RobotGazeboEnv(gym.Env):
 
     def __init__(self, robot_name_space, controllers_list, reset_controls, start_init_physics_parameters=True, reset_world_or_sim="SIMULATION"):
-
+        self.marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=10)
+        self.pose_marker = Pose()
+        self.pose_marker.position.x = 1
+        self.pose_marker.position.y = 1
+        self.pose_marker.position.z = 1
+        self.marker = Marker()
+        self.marker.header.frame_id = "base_link"
+        self.marker.type = self.marker.SPHERE
+        self.marker.action = self.marker.ADD
+        self.marker.pose = self.pose_marker
+        self.marker.scale.x = 0.1
+        self.marker.scale.y = 0.1
+        self.marker.scale.z = 0.1
+        self.marker.color.a = 1.0
+        self.marker.color.r = 0.0
+        self.marker.color.g = 1.0
+        self.marker.color.b = 0.0
         # To reset Simulations
         rospy.logdebug("START init RobotGazeboEnv")
         self.gazebo = GazeboConnection(start_init_physics_parameters,reset_world_or_sim)
@@ -24,10 +42,25 @@ class RobotGazeboEnv(gym.Env):
         self.reward_pub = rospy.Publisher('/openai/reward', RLExperimentInfo, queue_size=1)
         rospy.logdebug("END init RobotGazeboEnv")
 
+    def publish_marker(self, pose):
+        self.pose_marker.position.x = pose[0]
+        self.pose_marker.position.y = pose[1]
+        self.pose_marker.position.z = pose[2]
+        self.marker.header.stamp = rospy.Time.now()
+        self.marker_pub .publish(self.marker)
     # Env methods
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
+    
+    def get_target_dist(self, obs):
+        hand_pos = obs[-6:-3]
+        target_pos = obs[-3:]
+        return numpy.abs(hand_pos-target_pos)
+    
+    def get_score(self, obs):
+        score = -1*self.get_target_dist(obs)
+        return score
 
     def step(self, action):
         """
@@ -49,20 +82,28 @@ class RobotGazeboEnv(gym.Env):
         self.gazebo.pauseSim()
         obs = self._get_obs()
         done = self._is_done(obs)
-        info = {}
         reward = self._compute_reward(obs, done)
         self.cumulated_episode_reward += reward
-
+        score = self.get_score(obs)
+        env_info = {'ob': obs,
+                    'rewards': self.reward_dict,
+                    'score': score,
+                    "success": self.get_target_dist(obs) < 0.2}
         rospy.logdebug("END STEP OpenAIROS")
 
-        return obs, reward, done, info
+        return obs, reward, done, env_info
 
     def reset(self):
-        rospy.logdebug("Reseting RobotGazeboEnvironment")
+        rospy.logwarn("Reseting RobotGazeboEnvironment")
         self._reset_sim()
         self._init_env_variables()
         self._update_episode()
         obs = self._get_obs()
+        self.goal = numpy.zeros(3)
+        self.goal[0] = numpy.random.uniform(low=-20, high=30)
+        self.goal[1] = numpy.random.uniform(low=-20, high=30)
+        self.goal[2] = numpy.random.uniform(low=-20, high=30)
+        obs[-3:] = self.goal
         rospy.logdebug("END Reseting RobotGazeboEnvironment")
         return obs
 
