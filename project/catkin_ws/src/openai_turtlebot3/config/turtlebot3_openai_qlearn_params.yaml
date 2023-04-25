@@ -20,20 +20,20 @@ turtlebot3: #namespace
 
     speed_step: 1.0 # Time to wait in the reset phases
 
-    linear_forward_speed: 0.5 # Spawned for ging fowards
+    linear_forward_speed: 0.15 # Spawned for ging fowards
     linear_turn_speed: 0.1 # Lienare speed when turning
-    angular_speed: 0.3 # Angular speed when turning Left or Right
+    angular_speed: 0.0 # Angular speed when turning Left or Right
     init_linear_forward_speed: 0.0 # Initial linear speed in which we start each episode
     init_linear_turn_speed: 0.0 # Initial angular speed in shich we start each episode
     
-    new_ranges: 5 # How many laser readings we jump in each observation reading, the bigger the less laser resolution
-    min_range: 0.5 # Minimum meters below wich we consider we have crashed
+    new_ranges: 360 # How many laser readings we jump in each observation reading, the bigger the less laser resolution
+    min_range: 0.1 # Minimum meters below wich we consider we have crashed
     max_laser_value: 6 # Value considered Ok, no wall
     min_laser_value: 0 # Value considered there is an obstacle or crashed
-    max_linear_aceleration: 0.25
+    max_linear_aceleration: 0.6
     
     number_of_sectors: 3 # How many sectors we have
-    min_range: 0.5 # Minimum meters below wich we consider we have crashed
+    min_range: 0.1 # Minimum meters below wich we consider we have crashed
     middle_range: 1.0 # Minimum meters below wich we consider we have crashed
     danger_laser_value: 2 # Value considered Ok, no wall
     middle_laser_value: 1 # Middle value
@@ -42,4 +42,64 @@ turtlebot3: #namespace
     forwards_reward: 5 # Points Given to go forwards
     turn_reward: 1 # Points Given to turn as action
     end_episode_points: 200 # Points given when ending an episode
-    
+
+hrlparam:  
+    env:
+        env_name: "TurtleBot3World-v0" # ['reacher', 'antmaze']
+        task_name: 'gcrl' # ['gcrl','gclr_v2', 'hrl']
+        max_episode_length: 500
+        exp_name: 'testing reaching goal'
+        atari: True
+
+    alg:
+        double_q: True
+        batch_size: 256 ## The min amount of experience to collect before a training update
+        train_batch_size: 64 ## training batch size used for computing gradients of q function or policy
+        eval_batch_size: 256 ## How much experience should be collected over the environment to evaluate the average reward of a policy
+        num_agent_train_steps_per_iter: 2 ## Number of training updates after #batch_size experience is collected. 
+        num_critic_updates_per_agent_update: 2 ## Number of training updates after #batch_size experience is collected.
+        use_gpu: False
+        which_gpu: 0
+        rl_alg: 'pg' ## RL training algorithm [ddpg'', 'td3', 'sac','pg']
+        learning_starts: 256  ## How much initial experience to collect before training begins
+        learning_freq: 1 
+        target_update_freq: 1
+        exploration_schedule: 0
+        optimizer_spec:  0
+        replay_buffer_size: 100000
+        frame_history_len: 1
+        gamma: 0.98
+        n_layers_critic: 2
+        size_hidden_critic: 64
+        critic_learning_rate: 0.001
+        n_layers: 2
+        size: 64
+        learning_rate: 0.0003
+        ob_dim: 0             # do not modify
+        ac_dim: 0             # do not modify
+        batch_size_initial: 0 # do not modify
+        discrete: False
+        grad_norm_clipping: True
+        n_iter: 512
+        polyak_avg: 0.01 #
+        td3_target_policy_noise: 0.1 #
+        sac_entropy_coeff: 0.2
+        discount: 0.98
+        gae_lambda: 0.9
+        standardize_advantages: False 
+        reward_to_go: False
+        nn_baseline: True
+        on_policy: True
+        learn_policy_std: False
+        goal_frequency: 0
+        relative_goal: True
+        goal_dist: 'uniform'
+        save_policy: False
+        loaded_policy_name: 'todo'
+
+    logging:
+        video_log_freq: 500 # How often to generate a video to log/
+        scalar_log_freq: 1 # How often to log training information and run evaluation during training.
+        save_params: false # Should the parameters given to the script be saved? (Always...)
+        random_seed: 1234
+        logdir: ""
