@@ -164,8 +164,11 @@ class RL_Trainer(RL_Trainer):
                 self.agent.clear_mem()
             import pickle 
             rospy.logwarn('... saving training  for itr : ' + str(itr)+ 'for' + self.params['env']['exp_name'])
-            with open('saved_dictionary.pkl', 'wb') as f:
+            with open('/home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/saved_dictionary.pkl', 'wb') as f:
                 pickle.dump(self.final_log, f)
+            myFile = open('/home/cyrille/Desktop/IFT6163/Project/ift6163_homeworks_2023/project/catkin_ws/saved_dictionary_back.txt', 'w')
+            myFile.write(str(self.final_log))
+            myFile.close()
 
 
     ####################################
