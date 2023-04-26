@@ -66,14 +66,14 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         # In the discretization method.
         laser_scan = self._check_laser_scan_ready()
         num_laser_readings = int(len(laser_scan.ranges)/self.new_ranges)
-        #rospy.logwarn('num laser reading' +  str(num_laser_readings))
+        rospy.logwarn('num laser reading' +  str(num_laser_readings))
         # --- remove commented line below
-        #self.high_obs = numpy.full((self.new_ranges+6), self.max_laser_value)
-        #self.low_obs = numpy.full((self.new_ranges+6), self.min_laser_value)
-        #self.low_obs[-6:] = numpy.array([-20,-20,-20,-20,-20,-20])
-        #self.high_obs[-6:] = numpy.array([30,30,30,30,30,30])
-        self.high_obs = numpy.array([-3.5, 0.40, 0.0, -3.5, 0.40, 0.0 ])
-        self.low_obs = numpy.array([-2.12, 180, 0, -2.12, 1.80, 0])
+        self.high_obs = numpy.full((self.new_ranges+6), self.max_laser_value)
+        self.low_obs = numpy.full((self.new_ranges+6), self.min_laser_value)
+        self.low_obs[-6:] = numpy.array([-3.5, 0.40, 0.0, -3.5, 0.40, 0.0 ])
+        self.high_obs[-6:] = numpy.array([-2.12, 180, 0, -2.12, 1.80, 0])
+        #self.high_obs = numpy.array([-3.5, 0.40, 0.0, -3.5, 0.40, 0.0 ])
+        #self.low_obs = numpy.array([-2.12, 180, 0, -2.12, 1.80, 0])
         # We only use two integers
         self.observation_space = spaces.Box(self.low_obs, self.high_obs)
         #rospy.logwarn('test sur l''observation' +  str(self.observation_space.shape))
@@ -164,10 +164,10 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         # We get the laser scan data
         laser_scan = self.get_laser_scan()
         
-        #discretized_observations = self.discretize_scan_observation(    laser_scan,
-        #                                                                self.new_ranges
-        #                                                                )
-        discretized_observations = []
+        discretized_observations = self.discretize_scan_observation(    laser_scan,
+                                                                        self.new_ranges
+                                                                        )
+        #discretized_observations = []
         discretized_observations.append(self.get_odom().pose.pose.position.x)
         discretized_observations.append(self.get_odom().pose.pose.position.y)
         discretized_observations.append(self.get_odom().pose.pose.position.z)
@@ -233,12 +233,13 @@ class TurtleBot3WorldEnv(turtlebot3_env.TurtleBot3Env):
         #calc rew
         initial_pose_robot = numpy.array([-3, 1, 0])
         dist = numpy.linalg.norm(hand_pos - (target_pos+initial_pose_robot), axis=1)
+        rospy.logwarn('distance is ' + str(dist))
         if dist <= 0.025:
             self.reached = True
             rospy.logwarn('Target reached.........')
         self.reward_dict['r_total'] = -1*dist
         if self.never_reach:
-            self.reward_dict['r_total'] = [-200, 0]
+            self.reward_dict['r_total'] = -200 + (-1*dist)
             self.never_reach = False
         if(not batch_mode):
             return self.reward_dict['r_total'][0]
